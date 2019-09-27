@@ -105,12 +105,12 @@ export class SchemaCompareMainWindow {
 				title: localize('schemaCompare.differencesTableTitle', "Comparison between Source and Target")
 			}).component();
 
-			this.diffEditor = view.modelBuilder.diffeditor().withProperties({
-				contentLeft: os.EOL,
-				contentRight: os.EOL,
-				height: 500,
-				title: diffEditorTitle
-			}).component();
+			// this.diffEditor = view.modelBuilder.diffeditor().withProperties({
+			// 	contentLeft: os.EOL,
+			// 	contentRight: os.EOL,
+			// 	height: 500,
+			// 	title: diffEditorTitle
+			// }).component();
 
 			this.splitView = view.modelBuilder.splitViewContainer().component();
 
@@ -329,8 +329,8 @@ export class SchemaCompareMainWindow {
 			width: '98%'
 		});
 
-		this.splitView.addItem(this.differencesTable);
-		this.splitView.addItem(this.diffEditor);
+		// this.splitView.addItem(this.differencesTable);
+		// this.splitView.addItem(this.diffEditor);
 		this.splitView.setLayout({
 			orientation: 'vertical',
 			splitViewHeight: 800
@@ -341,7 +341,8 @@ export class SchemaCompareMainWindow {
 		this.resetButtons(ResetButtonState.afterCompareComplete);
 
 		if (this.comparisonResult.differences.length > 0) {
-			this.flexModel.addItem(this.splitView, { CSSStyles: { 'overflow': 'hidden' } });
+			// this.flexModel.addItem(this.splitView, { CSSStyles: { 'overflow': 'hidden' } });
+			this.flexModel.addItem(this.differencesTable);
 
 			// only enable generate script button if the target is a db
 			if (this.targetEndpointInfo.endpointType === mssql.SchemaCompareEndpointType.Database) {
@@ -376,19 +377,31 @@ export class SchemaCompareMainWindow {
 				sourceText = this.getFormattedScript(difference, true);
 				targetText = this.getFormattedScript(difference, false);
 
-				this.diffEditor.updateProperties({
-					contentLeft: sourceText,
-					contentRight: targetText,
-					title: diffEditorTitle
-				});
+				// this.diffEditor.updateProperties({
+				// 	contentLeft: sourceText,
+				// 	contentRight: targetText,
+				// 	title: diffEditorTitle
+				// });
 			}
 		}));
 		this.tablelistenersToDispose.push(this.differencesTable.onCellAction(async (rowState) => {
 			let checkboxState = <azdata.ICheckboxCellActionEventArgs>rowState;
 			if (checkboxState) {
 				let diff = this.comparisonResult.differences[checkboxState.row];
-				await service.schemaCompareIncludeExcludeNode(this.comparisonResult.operationId, diff, checkboxState.checked, azdata.TaskExecutionMode.execute);
-				this.saveExcludeState(checkboxState);
+				let result = await service.schemaCompareIncludeExcludeNode(this.comparisonResult.operationId, diff, checkboxState.checked, azdata.TaskExecutionMode.execute);
+				console.error('result.success is ' + result.success);
+				if (result.success) {
+					this.saveExcludeState(checkboxState);
+					this.differencesTable.data[checkboxState.row][checkboxState.column] = checkboxState.checked;
+				} else {
+					vscode.window.showWarningMessage(localize('schemaCompare.cannotExcludeMessage', 'Cannot exclude. Included dependents exist'));
+					this.differencesTable.data[checkboxState.row][checkboxState.column] = true;
+
+					// add and remove table to refresh the checkbox
+					// TODO: need to figure out a better way to do this. For big tables, this will refresh the table and show it from the beginning after
+					this.flexModel.removeItem(this.differencesTable);
+					this.flexModel.addItem(this.differencesTable);
+				}
 			}
 		}));
 	}
@@ -525,11 +538,11 @@ export class SchemaCompareMainWindow {
 		this.flexModel.removeItem(this.startText);
 		this.flexModel.addItem(this.loader, { CSSStyles: { 'margin-top': '30px' } });
 		this.flexModel.addItem(this.waitText, { CSSStyles: { 'margin-top': '30px', 'align-self': 'center' } });
-		this.diffEditor.updateProperties({
-			contentLeft: os.EOL,
-			contentRight: os.EOL,
-			title: diffEditorTitle
-		});
+		// this.diffEditor.updateProperties({
+		// 	contentLeft: os.EOL,
+		// 	contentRight: os.EOL,
+		// 	title: diffEditorTitle
+		// });
 
 		this.differencesTable.selectedRows = null;
 		if (this.tablelistenersToDispose) {
